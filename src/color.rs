@@ -14,6 +14,9 @@ pub enum ColorType {
     /// Pixel contains R, G and B channels
     RGB(u8),
 
+    /// Pixel contains H, S and V channels
+    HSV(u8),
+
     /// Pixel is an index into a color palette
     Palette(u8),
 
@@ -30,6 +33,7 @@ pub fn bits_per_pixel(c: ColorType) -> usize {
     match c {
         ColorType::Gray(n)    => n as usize,
         ColorType::RGB(n)     => 3 * n as usize,
+        ColorType::HSV(n)     => 3 * n as usize,
         ColorType::Palette(n) => 3 * n as usize,
         ColorType::GrayA(n)   => 2 * n as usize,
         ColorType::RGBA(n)    => 4 * n as usize,
@@ -41,6 +45,7 @@ pub fn num_components(c: ColorType) -> usize {
     match c {
         ColorType::Gray(_)    => 1,
         ColorType::RGB(_)     => 3,
+        ColorType::HSV(_)     => 3,
         ColorType::Palette(_) => 3,
         ColorType::GrayA(_)   => 2,
         ColorType::RGBA(_)    => 4,
@@ -121,6 +126,12 @@ impl<T: Primitive + 'static> Pixel for $ident<T> {
 
     fn to_rgba(&self) -> Rgba<T> {
         let mut pix = Rgba {data: [Zero::zero(), Zero::zero(), Zero::zero(), Zero::zero()]};
+        pix.from_color(self);
+        pix
+    }
+
+    fn to_hsv(&self) -> Hsv<T> {
+        let mut pix = Hsv {data: [Zero::zero(), Zero::zero(), Zero::zero()]};
         pix.from_color(self);
         pix
     }
@@ -213,6 +224,7 @@ define_colors! {
     Luma, 1, 0, "Y", Gray, #[doc = "Grayscale colors"];
     Rgba, 4, 1, "RGBA", RGBA, #[doc = "RGB colors + alpha channel"];
     LumaA, 2, 1, "YA", GrayA, #[doc = "Grayscale colors + alpha channel"];
+    Hsv, 3, 0, "HSV", HSV, #[doc = "HSV colors"];
 }
 
 
@@ -259,6 +271,12 @@ impl<T: Primitive + 'static> FromColor<LumaA<T>> for Luma<T> {
     }
 }
 
+impl<T: Primitive + 'static> FromColor<Hsv<T>> for Luma<T> {
+    fn from_color(&mut self, other: &Hsv<T>) {
+            self.channels_mut()[0] = other.channels()[0]
+    }
+}
+
 /// FromColor for LumA
 
 
@@ -288,6 +306,15 @@ impl<T: Primitive + 'static> FromColor<Rgb<T>> for LumaA<T> {
 
 impl<T: Primitive + 'static> FromColor<Luma<T>> for LumaA<T> {
     fn from_color(&mut self, other: &Luma<T>) {
+        let gray_a = self.channels_mut();
+        gray_a[0] = other.channels()[0];
+        gray_a[1] = T::max_value();
+    }
+}
+
+impl<T: Primitive + 'static> FromColor<Hsv<T>> for LumaA<T> {
+    fn from_color(&mut self, other: &Hsv<T>) {
+        // TODO
         let gray_a = self.channels_mut();
         gray_a[0] = other.channels()[0];
         gray_a[1] = T::max_value();
@@ -330,6 +357,18 @@ impl<T: Primitive + 'static> FromColor<Luma<T>> for Rgba<T> {
     }
 }
 
+impl<T: Primitive + 'static> FromColor<Hsv<T>> for Rgba<T> {
+    fn from_color(&mut self, gray: &Hsv<T>) {
+        // TODO
+        let rgba = self.channels_mut();
+        let gray = gray.channels()[0];
+        rgba[0] = gray;
+        rgba[1] = gray;
+        rgba[2] = gray;
+        rgba[3] = T::max_value();
+    }
+}
+
 
 /// FromColor for RGB
 
@@ -340,7 +379,6 @@ impl<T: Primitive + 'static> FromColor<Rgba<T>> for Rgb<T> {
         rgb[0] = rgba[0];
         rgb[1] = rgba[1];
         rgb[2] = rgba[2];
-
     }
 }
 
@@ -356,6 +394,77 @@ impl<T: Primitive + 'static> FromColor<LumaA<T>> for Rgb<T> {
 
 impl<T: Primitive + 'static> FromColor<Luma<T>> for Rgb<T> {
     fn from_color(&mut self, gray: &Luma<T>) {
+        let rgb = self.channels_mut();
+        let gray = gray.channels()[0];
+        rgb[0] = gray;
+        rgb[1] = gray;
+        rgb[2] = gray;
+    }
+}
+
+impl<T: Primitive + 'static> FromColor<Hsv<T>> for Rgb<T> {
+    fn from_color(&mut self, gray: &Hsv<T>) {
+        // TODO
+        let rgb = self.channels_mut();
+        let gray = gray.channels()[0];
+        rgb[0] = gray;
+        rgb[1] = gray;
+        rgb[2] = gray;
+    }
+}
+
+/// FromColor for HSV
+
+impl<T: Primitive + 'static> FromColor<Rgb<T>> for Hsv<T> {
+    fn from_color(&mut self, other: &Rgb<T>) {
+        let hsv = self.channels_mut();
+        let rgb = other.channels();
+        let max = T::max_value().to_u8().unwrap();
+        let min = T::min_value().to_u8().unwrap();
+        let r = rgb[0].to_u8().unwrap();
+        let g = rgb[1].to_u8().unwrap();
+        let b = rgb[2].to_u8().unwrap();
+        let d = max - min;
+        let mut h = 0;
+        hsv[1] = if max == 0 {Zero::zero()} else {NumCast::from(d / max).unwrap()};
+        hsv[2] = NumCast::from(max / 255).unwrap();
+
+        match max {
+            min if min == max => h = 0,
+            r if r == max => {h = (g - b) + d * (if g < b {6} else {0});h /= 6 * d;}
+            g if g == max => {h = (b - r) + d * 2; h /= 6 * d;}
+            b if b == max => {h = (r - g) + d * 4; h /= 6 * d;}
+            _ => ()
+        }
+        hsv[0] = NumCast::from(h).unwrap();
+    }
+}
+
+impl<T: Primitive + 'static> FromColor<Rgba<T>> for Hsv<T> {
+    fn from_color(&mut self, other: &Rgba<T>) {
+        // TODO
+        let rgb = self.channels_mut();
+        let rgba = other.channels();
+        rgb[0] = rgba[0];
+        rgb[1] = rgba[1];
+        rgb[2] = rgba[2];
+    }
+}
+
+impl<T: Primitive + 'static> FromColor<LumaA<T>> for Hsv<T> {
+    fn from_color(&mut self, other: &LumaA<T>) {
+        // TODO
+        let rgb = self.channels_mut();
+        let gray = other.channels()[0];
+        rgb[0] = gray;
+        rgb[1] = gray;
+        rgb[2] = gray;
+    }
+}
+
+impl<T: Primitive + 'static> FromColor<Luma<T>> for Hsv<T> {
+    fn from_color(&mut self, gray: &Luma<T>) {
+        // TODO
         let rgb = self.channels_mut();
         let gray = gray.channels()[0];
         rgb[0] = gray;
@@ -441,6 +550,12 @@ impl<T: Primitive> Blend for Rgb<T> {
     }
 }
 
+impl<T: Primitive> Blend for Hsv<T> {
+    fn blend(&mut self, other: &Hsv<T>) {
+        *self = *other
+    }
+}
+
 /// Invert a color
 pub trait Invert {
     /// Inverts a color in-place.
@@ -489,5 +604,14 @@ impl<T: Primitive> Invert for Rgb<T> {
         let b1 = max - rgb[2];
 
         *self = Rgb([r1, g1, b1])
+    }
+}
+
+impl<T: Primitive> Invert for Hsv<T> {
+    fn invert(&mut self) {
+        let hsv = self.data;
+        let h1 = 1.0 - hsv[0].to_f32().unwrap();
+
+        *self = Hsv([NumCast::from(h1).unwrap(), hsv[1], hsv[2]])
     }
 }

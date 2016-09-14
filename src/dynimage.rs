@@ -28,7 +28,7 @@ use ico;
 use hdr;
 
 use color;
-use buffer::{ImageBuffer, ConvertBuffer, Pixel, GrayImage, GrayAlphaImage, RgbImage, RgbaImage};
+use buffer::{ImageBuffer, ConvertBuffer, Pixel, GrayImage, GrayAlphaImage, RgbImage, RgbaImage, HsvImage};
 use imageops;
 use image;
 use image:: {
@@ -54,6 +54,9 @@ pub enum DynamicImage {
 
     /// Each pixel in this image is 8-bit Rgb with alpha
     ImageRgba8(RgbaImage),
+
+    /// Each pixel in this image is 8-bit Hsv
+    ImageHsv8(HsvImage),
 }
 
 macro_rules! dynamic_map(
@@ -63,6 +66,7 @@ macro_rules! dynamic_map(
                         DynamicImage::ImageLumaA8(ref $image) => DynamicImage::ImageLumaA8($action),
                         DynamicImage::ImageRgb8(ref $image) => DynamicImage::ImageRgb8($action),
                         DynamicImage::ImageRgba8(ref $image) => DynamicImage::ImageRgba8($action),
+                        DynamicImage::ImageHsv8(ref $image) => DynamicImage::ImageHsv8($action),
                 }
         );
 
@@ -72,6 +76,7 @@ macro_rules! dynamic_map(
                         DynamicImage::ImageLumaA8(ref mut $image) => DynamicImage::ImageLumaA8($action),
                         DynamicImage::ImageRgb8(ref mut $image) => DynamicImage::ImageRgb8($action),
                         DynamicImage::ImageRgba8(ref mut $image) => DynamicImage::ImageRgba8($action),
+                        DynamicImage::ImageHsv8(ref mut $image) => DynamicImage::ImageHsv8($action),
                 }
         );
 
@@ -81,6 +86,7 @@ macro_rules! dynamic_map(
                         DynamicImage::ImageLumaA8(ref $image) => $action,
                         DynamicImage::ImageRgb8(ref $image) => $action,
                         DynamicImage::ImageRgba8(ref $image) => $action,
+                        DynamicImage::ImageHsv8(ref $image) => $action,
                 }
         );
 
@@ -90,6 +96,7 @@ macro_rules! dynamic_map(
                         DynamicImage::ImageLumaA8(ref mut $image) => $action,
                         DynamicImage::ImageRgb8(ref mut $image) => $action,
                         DynamicImage::ImageRgba8(ref mut $image) => $action,
+                        DynamicImage::ImageHsv8(ref mut $image) => $action,
                 }
         );
 );
@@ -116,6 +123,11 @@ impl DynamicImage {
         DynamicImage::ImageRgba8(ImageBuffer::new(w, h))
     }
 
+    /// Creates a dynamic image backed by a buffer of RGBA pixels.
+    pub fn new_hsv8(w: u32, h: u32) -> DynamicImage {
+        DynamicImage::ImageHsv8(ImageBuffer::new(w, h))
+    }
+
     /// Returns a copy of this image as an RGB image.
     pub fn to_rgb(&self) -> RgbImage {
         dynamic_map!(*self, ref p -> {
@@ -125,6 +137,13 @@ impl DynamicImage {
 
     /// Returns a copy of this image as an RGBA image.
     pub fn to_rgba(&self) -> RgbaImage {
+        dynamic_map!(*self, ref p -> {
+            p.convert()
+        })
+    }
+
+    /// Returns a copy of this image as an RGB image.
+    pub fn to_hsv(&self) -> HsvImage {
         dynamic_map!(*self, ref p -> {
             p.convert()
         })
@@ -186,6 +205,22 @@ impl DynamicImage {
         }
     }
 
+    /// Return a reference to an 8bit RGB image
+    pub fn as_hsv8(&self) -> Option<&HsvImage> {
+        match *self {
+            DynamicImage::ImageHsv8(ref p) => Some(p),
+            _                              => None
+        }
+    }
+
+    /// Return a mutable reference to an 8bit RGB image
+    pub fn as_mut_hsv8(&mut self) -> Option<&mut HsvImage> {
+        match *self {
+            DynamicImage::ImageHsv8(ref mut p) => Some(p),
+            _                                  => None
+        }
+    }
+
     /// Return a reference to an 8bit Grayscale image
     pub fn as_luma8(& self) -> Option<& GrayImage> {
         match *self {
@@ -230,6 +265,7 @@ impl DynamicImage {
             DynamicImage::ImageLumaA8(_) => color::ColorType::GrayA(8),
             DynamicImage::ImageRgb8(_) => color::ColorType::RGB(8),
             DynamicImage::ImageRgba8(_) => color::ColorType::RGBA(8),
+            DynamicImage::ImageHsv8(_) => color::ColorType::HSV(8),
         }
     }
 
@@ -240,6 +276,7 @@ impl DynamicImage {
             DynamicImage::ImageLumaA8(ref p) => DynamicImage::ImageLuma8(imageops::grayscale(p)),
             DynamicImage::ImageRgb8(ref p) => DynamicImage::ImageLuma8(imageops::grayscale(p)),
             DynamicImage::ImageRgba8(ref p) => DynamicImage::ImageLuma8(imageops::grayscale(p)),
+            DynamicImage::ImageHsv8(ref p) => DynamicImage::ImageLuma8(imageops::grayscale(p)),
         }
     }
 
@@ -428,6 +465,7 @@ impl GenericImage for DynamicImage {
             DynamicImage::ImageLumaA8(ref mut p) => p.put_pixel(x, y, pixel.to_luma_alpha()),
             DynamicImage::ImageRgb8(ref mut p) => p.put_pixel(x, y, pixel.to_rgb()),
             DynamicImage::ImageRgba8(ref mut p) => p.put_pixel(x, y, pixel),
+            DynamicImage::ImageHsv8(ref mut p) => p.put_pixel(x, y, pixel.to_hsv()),
         }
     }
     /// DEPRECATED: Use iterator `pixels_mut` to blend the pixels directly.
@@ -437,6 +475,7 @@ impl GenericImage for DynamicImage {
             DynamicImage::ImageLumaA8(ref mut p) => p.blend_pixel(x, y, pixel.to_luma_alpha()),
             DynamicImage::ImageRgb8(ref mut p) => p.blend_pixel(x, y, pixel.to_rgb()),
             DynamicImage::ImageRgba8(ref mut p) => p.blend_pixel(x, y, pixel),
+            DynamicImage::ImageHsv8(ref mut p) => p.blend_pixel(x, y, pixel.to_hsv()),
         }
     }
 
@@ -466,6 +505,10 @@ pub fn decoder_to_image<I: ImageDecoder>(codec: I) -> ImageResult<DynamicImage> 
 
         (color::ColorType::Gray(8), U8(buf)) => {
             ImageBuffer::from_raw(w, h, buf).map(|v| DynamicImage::ImageLuma8(v))
+        }
+
+        (color::ColorType::HSV(8), U8(buf)) => {
+            ImageBuffer::from_raw(w, h, buf).map(|v| DynamicImage::ImageHsv8(v))
         }
 
         (color::ColorType::GrayA(8), U8(buf)) => {
@@ -518,6 +561,10 @@ fn image_to_bytes(image: &DynamicImage) -> Vec<u8> {
         }
 
         DynamicImage::ImageRgba8(ref a) => {
+            a.iter().map(|v| *v).collect()
+        }
+
+        DynamicImage::ImageHsv8(ref a) => {
             a.iter().map(|v| *v).collect()
         }
     }

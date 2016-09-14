@@ -6,7 +6,7 @@ use std::io;
 use num_traits::Zero;
 
 use traits::Primitive;
-use color::{ Rgb, Rgba, Luma, LumaA, FromColor, ColorType };
+use color::{ Rgb, Rgba, Hsv, Luma, LumaA, FromColor, ColorType };
 use image::GenericImage;
 use dynimage::save_buffer;
 use utils::expand_packed;
@@ -63,6 +63,9 @@ pub trait Pixel: Copy + Clone {
 
     /// Convert this pixel to RGB with an alpha channel
     fn to_rgba(&self) -> Rgba<Self::Subpixel>;
+
+    /// Convert this pixel to HSV
+    fn to_hsv(&self) -> Hsv<Self::Subpixel>;
 
     /// Convert this pixel to luma
     fn to_luma(&self) -> Luma<Self::Subpixel>;
@@ -608,6 +611,8 @@ pub type RgbaImage = ImageBuffer<Rgba<u8>, Vec<u8>>;
 pub type GrayImage = ImageBuffer<Luma<u8>, Vec<u8>>;
 /// Sendable grayscale + alpha channel image buffer
 pub type GrayAlphaImage = ImageBuffer<LumaA<u8>, Vec<u8>>;
+/// Sendable Hsv image buffer
+pub type HsvImage = ImageBuffer<Hsv<u8>, Vec<f64>>;
 
 #[cfg(test)]
 mod test {
