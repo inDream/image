@@ -612,7 +612,7 @@ pub type GrayImage = ImageBuffer<Luma<u8>, Vec<u8>>;
 /// Sendable grayscale + alpha channel image buffer
 pub type GrayAlphaImage = ImageBuffer<LumaA<u8>, Vec<u8>>;
 /// Sendable Hsv image buffer
-pub type HsvImage = ImageBuffer<Hsv<u8>, Vec<f64>>;
+pub type HsvImage = ImageBuffer<Hsv<f32>, Vec<f32>>;
 
 #[cfg(test)]
 mod test {

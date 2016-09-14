@@ -271,8 +271,8 @@ impl<T: Primitive + 'static> FromColor<LumaA<T>> for Luma<T> {
     }
 }
 
-impl<T: Primitive + 'static> FromColor<Hsv<T>> for Luma<T> {
-    fn from_color(&mut self, other: &Hsv<T>) {
+impl<f32: Primitive + 'static> FromColor<Hsv<f32>> for Luma<u8> {
+    fn from_color(&mut self, other: &Hsv<f32>) {
             self.channels_mut()[0] = other.channels()[0]
     }
 }
@@ -312,12 +312,12 @@ impl<T: Primitive + 'static> FromColor<Luma<T>> for LumaA<T> {
     }
 }
 
-impl<T: Primitive + 'static> FromColor<Hsv<T>> for LumaA<T> {
-    fn from_color(&mut self, other: &Hsv<T>) {
+impl<f32: Primitive + 'static> FromColor<Hsv<f32>> for LumaA<u8> {
+    fn from_color(&mut self, other: &Hsv<f32>) {
         // TODO
         let gray_a = self.channels_mut();
         gray_a[0] = other.channels()[0];
-        gray_a[1] = T::max_value();
+        gray_a[1] = 100;
     }
 }
 
@@ -357,15 +357,15 @@ impl<T: Primitive + 'static> FromColor<Luma<T>> for Rgba<T> {
     }
 }
 
-impl<T: Primitive + 'static> FromColor<Hsv<T>> for Rgba<T> {
-    fn from_color(&mut self, gray: &Hsv<T>) {
+impl<f32: Primitive + 'static> FromColor<Hsv<f32>> for Rgba<u8> {
+    fn from_color(&mut self, gray: &Hsv<f32>) {
         // TODO
         let rgba = self.channels_mut();
         let gray = gray.channels()[0];
         rgba[0] = gray;
         rgba[1] = gray;
         rgba[2] = gray;
-        rgba[3] = T::max_value();
+        rgba[3] = 100;
     }
 }
 
@@ -402,8 +402,8 @@ impl<T: Primitive + 'static> FromColor<Luma<T>> for Rgb<T> {
     }
 }
 
-impl<T: Primitive + 'static> FromColor<Hsv<T>> for Rgb<T> {
-    fn from_color(&mut self, gray: &Hsv<T>) {
+impl<f32: Primitive + 'static> FromColor<Hsv<f32>> for Rgb<u8> {
+    fn from_color(&mut self, gray: &Hsv<f32>) {
         // TODO
         let rgb = self.channels_mut();
         let gray = gray.channels()[0];
@@ -415,15 +415,15 @@ impl<T: Primitive + 'static> FromColor<Hsv<T>> for Rgb<T> {
 
 /// FromColor for HSV
 
-impl<T: Primitive + 'static> FromColor<Rgb<T>> for Hsv<T> {
-    fn from_color(&mut self, other: &Rgb<T>) {
+impl<f32: Primitive + 'static> FromColor<Rgb<u8>> for Hsv<f32> {
+    fn from_color(&mut self, other: &Rgb<u8>) {
         let hsv = self.channels_mut();
         let rgb = other.channels();
-        let max = T::max_value().to_u8().unwrap();
-        let min = T::min_value().to_u8().unwrap();
-        let r = rgb[0].to_u8().unwrap();
-        let g = rgb[1].to_u8().unwrap();
-        let b = rgb[2].to_u8().unwrap();
+        let max = rgb.iter().max();
+        let min = rgb.iter().min();
+        let r = rgb[0];
+        let g = rgb[1];
+        let b = rgb[2];
         let d = max - min;
         let mut h = 0;
         hsv[1] = if max == 0 {Zero::zero()} else {NumCast::from(d / max).unwrap()};
@@ -440,8 +440,8 @@ impl<T: Primitive + 'static> FromColor<Rgb<T>> for Hsv<T> {
     }
 }
 
-impl<T: Primitive + 'static> FromColor<Rgba<T>> for Hsv<T> {
-    fn from_color(&mut self, other: &Rgba<T>) {
+impl<f32: Primitive + 'static> FromColor<Rgba<u8>> for Hsv<f32> {
+    fn from_color(&mut self, other: &Rgba<u8>) {
         // TODO
         let rgb = self.channels_mut();
         let rgba = other.channels();
@@ -451,8 +451,8 @@ impl<T: Primitive + 'static> FromColor<Rgba<T>> for Hsv<T> {
     }
 }
 
-impl<T: Primitive + 'static> FromColor<LumaA<T>> for Hsv<T> {
-    fn from_color(&mut self, other: &LumaA<T>) {
+impl<f32: Primitive + 'static> FromColor<LumaA<u8>> for Hsv<f32> {
+    fn from_color(&mut self, other: &LumaA<u8>) {
         // TODO
         let rgb = self.channels_mut();
         let gray = other.channels()[0];
@@ -462,8 +462,8 @@ impl<T: Primitive + 'static> FromColor<LumaA<T>> for Hsv<T> {
     }
 }
 
-impl<T: Primitive + 'static> FromColor<Luma<T>> for Hsv<T> {
-    fn from_color(&mut self, gray: &Luma<T>) {
+impl<f32: Primitive + 'static> FromColor<Luma<u8>> for Hsv<f32> {
+    fn from_color(&mut self, gray: &Luma<u8>) {
         // TODO
         let rgb = self.channels_mut();
         let gray = gray.channels()[0];
